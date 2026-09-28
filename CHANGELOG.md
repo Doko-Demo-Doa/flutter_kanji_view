@@ -1,3 +1,7 @@
+## [2.2.0] - 2026-09-28
+
+* Add GitHub Actions workflows for package verification and publishing.
+
 ## [2.1.0] - 2026-09-28
 
 * Resolve analyzer diagnostics found during package validation.
