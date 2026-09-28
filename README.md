@@ -98,3 +98,7 @@ Optionally, provide one `Paint` per path with `paints`. The paint list must have
 ```dart
 final code = getKanjiUnicode('\u65B0'); // '065b0'
 ```
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).

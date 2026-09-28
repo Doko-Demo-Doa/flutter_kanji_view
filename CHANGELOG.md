@@ -3,6 +3,8 @@
 * Migrate to sound null safety and Dart 3.
 * Update dependencies and Flutter API usage for current stable Flutter.
 * Update the example and add SVG parsing and widget tests.
+* Refine the README with installation, usage, and example run instructions.
+* Add the MIT License.
 
 ## [1.0.2] - TODO: Add release date.
 
