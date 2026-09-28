@@ -73,8 +73,6 @@ class PathOrder {
               .dy
               .compareTo(b.path.getBounds().center.dy);
         };
-      default:
-        return PathOrder._original()._getComparator();
     }
   }
 
