@@ -1,66 +1,39 @@
 # flutter_kanji_view
 
-![logo](https://user-images.githubusercontent.com/7723097/74023617-a5181480-49d2-11ea-90c8-76e16efb617b.png)
+![Kanji drawing animation](https://user-images.githubusercontent.com/7723097/74023142-7fd6d680-49d1-11ea-8c35-65adefdc2923.gif)
 
-A Flutter library to draw kanji character with animation.
+A Flutter widget for animating the strokes of kanji and other SVG drawings. It can load SVG data from an asset or a string, or draw a list of Flutter `Path` objects.
 
-Requires Flutter 3.41 or newer and Dart 3.11 or newer. The package uses sound null safety.
+This package uses sound null safety and requires Flutter 3.41 or later and Dart 3.11 or later.
 
-![kanji_drawing](https://user-images.githubusercontent.com/7723097/74023142-7fd6d680-49d1-11ea-8c35-65adefdc2923.gif)
+## Install
 
-# Introduction
+Add the package to your app's `pubspec.yaml`:
 
-This library is based on biocarl's [drawing_animation](https://github.com/biocarl/drawing_animation), but with some modifications to display kanji SVG from [KanjiVG](https://kanjivg.tagaini.net/).
-
-Moreover, it exposes a third constructor: `.str`, to display the kanji SVG data downloaded as a string (very handy if you store those SVG on your server).
-
-## 1. Add dependency into your `pubspec.yaml`
-
-```yml
+```yaml
 dependencies:
   flutter_kanji_view: ^2.0.0
 ```
 
-## 2. Provide the assets
+Then fetch the dependency:
 
-(optional, not recommended since it will increase the app bundle a lot. There are over 6000 SVG files in the package):
-
-- Download KanjiVG pack from [here](https://github.com/KanjiVG/kanjivg/releases) , get the zip file.
-
-- Add the path into `yml`:
-
-```yml
-assets:
-  - assets/0ff10.svg
+```shell
+flutter pub get
 ```
 
-## 3. Use the widget: Same with drawing_animation, you can use it in two ways:
+## Load an SVG asset
 
-- (Optional) You may want to translate the kanji character to its unicode code counterpart. Just use the `getKanjiUnicode` method provided in this package:
+Download SVG files from the [KanjiVG releases](https://github.com/KanjiVG/kanjivg/releases) and add the files you need to your app. Declaring only the files you use helps keep the app bundle small.
 
-```dart
-getKanjiUnicode('新');
+Register each asset in your app's `pubspec.yaml`:
+
+```yaml
+flutter:
+  assets:
+    - assets/0ff10.svg
 ```
 
-- Without controller: Set `run` and `duration` to use the built-in animation. It repeats while `run` remains true:
-
-```dart
-KanjiViewer.svg(
-  "assets/0ff10.svg",
-  run: this.run,
-  duration: const Duration(seconds: 3),
-)
-```
-
-- With controller: You will have more control over the widget.
-
-See [the example](example/example.dart) for a complete app with an externally controlled animation and a redraw button. Dispose your `AnimationController` when its owner is removed.
-
-## 4. Advanced usage:
-
-There are 3 mores for drawing SVG, mostly from the source they were from.
-
-*** From SVG asset ***: This might be the most common use.
+Then pass its path to `KanjiViewer.svg`:
 
 ```dart
 KanjiViewer.svg(
@@ -70,9 +43,11 @@ KanjiViewer.svg(
 )
 ```
 
-*** From SVG string ***
+When using `run` and `duration`, the animation repeats while `run` is `true`. Set `run` to `false` to stop it. Use `onFinish` to stop after one cycle.
 
-This can be convenient when you store your SVG data somewhere on the remote server, and retrieve via API:
+## Load an SVG string
+
+Use `KanjiViewer.str` when SVG data comes from an API or another source:
 
 ```dart
 KanjiViewer.str(
@@ -82,10 +57,31 @@ KanjiViewer.str(
 )
 ```
 
-*** From Path data ***
+## Control the animation with a controller
+
+Pass an `AnimationController` when you need direct control over the animation. The widget does not own the controller; create and dispose of it in the surrounding `State` object.
 
 ```dart
-// Of the List<Path>
+KanjiViewer.str(svgString, controller: controller)
+```
+
+See [`example/example.dart`](example/example.dart) for a complete app that plays and redraws an SVG using a controller.
+
+To run the example, change to the `example` directory, fetch dependencies, and select a connected device or desktop target:
+
+```shell
+cd example
+flutter pub get
+flutter run -t example.dart
+```
+
+For example, on Windows desktop run `flutter run -d windows -t example.dart` (Windows desktop support and the Visual Studio **Desktop development with C++** workload are required).
+
+## Draw Flutter paths
+
+Pass a non-empty list of `Path` objects to `KanjiViewer.paths`:
+
+```dart
 KanjiViewer.paths(
   pathList,
   run: true,
@@ -93,11 +89,12 @@ KanjiViewer.paths(
 )
 ```
 
-You can use some methods in SVGHelper class (such as `getCoordinatesGroup` and `buildPath`) for Path parsing. I'm not going to document it any time soon because of lacking time though.
+Optionally, provide one `Paint` per path with `paints`. The paint list must have the same length as the path list. See the API documentation for [`KanjiViewer`](https://pub.dev/documentation/flutter_kanji_view/latest/flutter_kanji_view/KanjiViewer-class.html) for animation options, path ordering, and callbacks.
 
-TODO:
+## Convert a character to its Unicode code
 
-Since the core library borrows a lot from drawing_animation, their TODOs are also considered this lib's TODOs. This lib, however, add some more priority tasks that I can foresee:
+`getKanjiUnicode` returns the hexadecimal code point for a single character:
 
-- Expose `Paint` object so users can customize the stroke color / width.
-- Expose a `colorSeed` array for distinct strokes. It should be a `List` of `Color` object.
+```dart
+final code = getKanjiUnicode('\u65B0'); // '065b0'
+```
