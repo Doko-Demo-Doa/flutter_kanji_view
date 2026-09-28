@@ -9,28 +9,25 @@ class SVGHelper {
   RegExp _svgPathPattern = new RegExp("""<path .*(?<= )d="([^"]+)".*/>""");
 
   bool isNumeric(String s) {
-    if (s == null) {
-      return false;
-    }
     return double.tryParse(s) != null;
   }
 
   String extractPathData(String input) {
-    return _svgPathPattern.allMatches(input).map((e) => e.group(0)).join();
+    return _svgPathPattern.allMatches(input).map((e) => e.group(0)!).join();
   }
 
   List<double> getCoordinatesGroup(String input, [int groupSize = 4]) {
     var listMatched = _svgCoordinatesPattern
         .allMatches(input)
         .toList()
-        .where((e) => isNumeric(e.group(0)))
-        .map((e) => double.parse(e.group(0)))
+        .where((e) => isNumeric(e.group(0)!))
+        .map((e) => double.parse(e.group(0)!))
         .toList();
 
     return listMatched;
   }
 
-  Path buildPath(String inputData) {
+  Path? buildPath(String inputData) {
     Path p = Path();
     try {
       var matcher = _svgInstructionPattern.allMatches(inputData).toList();
@@ -44,8 +41,8 @@ class SVGHelper {
       var curve = false;
 
       matcher.forEach((matchElem) {
-        var command = matchElem.group(1);
-        var coordinateStr = matchElem.group(2);
+        var command = matchElem.group(1)!;
+        var coordinateStr = matchElem.group(2)!;
         // print("[$command]: $coordinateStr");
 
         switch (command.toLowerCase()) {

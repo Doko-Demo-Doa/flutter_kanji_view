@@ -17,7 +17,7 @@ class PaintedPainter extends PathPainter {
   PaintedPainter(
       Animation<double> animation,
       List<PathSegment> pathSegments,
-      Size customDimensions,
+      Size? customDimensions,
       List<Paint> paints,
       PaintedSegmentCallback onFinishCallback,
       bool scaleToViewport,
@@ -50,7 +50,7 @@ class AllAtOncePainter extends PathPainter {
   AllAtOncePainter(
       Animation<double> animation,
       List<PathSegment> pathSegments,
-      Size customDimensions,
+      Size? customDimensions,
       List<Paint> paints,
       PaintedSegmentCallback onFinishCallback,
       bool scaleToViewport,
@@ -90,7 +90,7 @@ class OneByOnePainter extends PathPainter {
   OneByOnePainter(
       Animation<double> animation,
       List<PathSegment> pathSegments,
-      Size customDimensions,
+      Size? customDimensions,
       List<Paint> paints,
       PaintedSegmentCallback onFinishCallback,
       bool scaleToViewport,
@@ -98,9 +98,7 @@ class OneByOnePainter extends PathPainter {
       : this.totalPathSum = 0,
         super(animation, pathSegments, customDimensions, paints,
             onFinishCallback, scaleToViewport, debugOptions) {
-    if (this.pathSegments != null) {
-      this.pathSegments.forEach((e) => this.totalPathSum += e.length);
-    }
+    this.pathSegments.forEach((e) => this.totalPathSum += e.length);
   }
 
   /// The total length of all summed up [PathSegment] elements of the parsed Svg
@@ -113,7 +111,7 @@ class OneByOnePainter extends PathPainter {
   double _paintedLength = 0.0;
 
   /// Path segments which will be painted to canvas at current frame
-  List<PathSegment> toPaint = new List();
+  List<PathSegment> toPaint = <PathSegment>[];
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -144,8 +142,8 @@ class OneByOnePainter extends PathPainter {
       this.paintedSegmentIndex = currentIndex;
       this._paintedLength = currentLength;
       // //[3] Paint all selected paths to canvas
-      Paint paint;
-      Path tmp;
+      late Paint paint;
+      late Path tmp;
       if (this.animation.value == 1.0) {
         //hotfix: to ensure callback for last segment TODO not pretty
         toPaint.clear();
@@ -204,19 +202,17 @@ abstract class PathPainter extends CustomPainter {
       this.debugOptions)
       : canPaint = false,
         super(repaint: animation) {
-    if (this.pathSegments != null) {
-      calculateBoundingBox();
-    }
+    calculateBoundingBox();
   }
 
   /// Total bounding box of all paths
-  Rect pathBoundingBox;
+  late Rect pathBoundingBox;
 
   /// For expanding the bounding box when big stroke would breaks the bb
-  double strokeWidth;
+  late double strokeWidth;
 
   /// User defined dimensions for canvas
-  Size customDimensions;
+  Size? customDimensions;
   final Animation<double> animation;
 
   /// Each [PathSegment] represents a continuous Path element of the parsed Svg
@@ -235,7 +231,7 @@ abstract class PathPainter extends CustomPainter {
 
   //For debug - show widget and svg bounding box and record canvas to *.png
   DebugOptions debugOptions;
-  ui.PictureRecorder recorder;
+  late ui.PictureRecorder recorder;
 
   // Get boundingBox by combining boundingBox of each PathSegment and inflating the resulting bounding box by half of the found max strokeWidth TODO find a better solution. This does only work if the stroke with maxWidth defines on side of bounding box. Otherwise it results to unwanted padding.
   void calculateBoundingBox() {
@@ -302,7 +298,7 @@ abstract class PathPainter extends CustomPainter {
   Future<void> writeToFile(
       ui.Picture picture, String fileName, Size size) async {
     _ScaleFactor scale = calculateScaleFactor(size);
-    ByteData byteData = await ((await picture.toImage(
+    ByteData? byteData = await ((await picture.toImage(
             (scale.x *
                     this.debugOptions.resolutionFactor *
                     this.pathBoundingBox.width)
@@ -312,6 +308,7 @@ abstract class PathPainter extends CustomPainter {
                     this.pathBoundingBox.height)
                 .round()))
         .toByteData(format: ui.ImageByteFormat.png));
+    if (byteData == null) return;
     final buffer = byteData.buffer;
     await File(fileName).writeAsBytes(
         buffer.asUint8List(byteData.offsetInBytes, byteData.lengthInBytes));
@@ -324,7 +321,7 @@ abstract class PathPainter extends CustomPainter {
     double dy = (viewBox.height) / this.pathBoundingBox.height;
 
     //Applied scale factors
-    double ddx, ddy;
+    late double ddx, ddy;
 
     //No viewport available
     assert(!(dx == 0 && dy == 0));
@@ -361,7 +358,7 @@ abstract class PathPainter extends CustomPainter {
     if (scaleToViewport) {
       //Viewbox with Offset.zero
       Size viewBox = (this.customDimensions != null)
-          ? this.customDimensions
+          ? this.customDimensions!
           : Size.copy(size);
       _ScaleFactor scale = calculateScaleFactor(viewBox);
       canvas.scale(scale.x, scale.y);
@@ -399,6 +396,6 @@ abstract class PathPainter extends CustomPainter {
 
 class _ScaleFactor {
   const _ScaleFactor(this.x, this.y);
-  final x;
-  final y;
+  final double x;
+  final double y;
 }

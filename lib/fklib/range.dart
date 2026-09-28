@@ -9,17 +9,20 @@ abstract class AnimationRange {
   final int start;
   final int end;
 
-  bool get isLower => this.start != null;
-  bool get isUpper => this.end != null;
+  bool get isLower => true;
+  bool get isUpper => true;
 
   @override
   bool operator ==(Object o) =>
       o is AnimationRange && this.start == o.start && this.end == o.end;
+
+  @override
+  int get hashCode => Object.hash(start, end);
 }
 
 /// Denotes a range by its relative position in the Path array provided.
 ///
 /// The [start] should be >= 0 and [end] < than the number of the provided Path objects.
 class PathIndexRange extends AnimationRange {
-  PathIndexRange({int start, int end}) : super(start, end);
+  PathIndexRange({required int start, required int end}) : super(start, end);
 }

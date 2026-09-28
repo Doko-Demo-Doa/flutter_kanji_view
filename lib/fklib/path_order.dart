@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart';
 
 import 'parser.dart';
@@ -14,7 +13,7 @@ class PathOrder {
       : this._comparator = _byLength(reverse: reverse);
 
   /// The [PathSegment] order is defined according to its position in the overall bounding box. The position is defined as the center of the respective bounding box of each [PathSegment] element. The field [direction] specifies in which direction the position attribute is compared.
-  PathOrder.byPosition({@required AxisDirection direction})
+  PathOrder.byPosition({required AxisDirection direction})
       : this._comparator = _byPosition(direction: direction);
 
   /// Internal
@@ -40,7 +39,7 @@ class PathOrder {
   }
 
   static Comparator<PathSegment> _byPosition(
-      {@required AxisDirection direction}) {
+      {required AxisDirection direction}) {
     switch (direction) {
       case AxisDirection.left:
         return (PathSegment a, PathSegment b) {

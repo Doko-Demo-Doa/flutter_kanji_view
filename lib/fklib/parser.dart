@@ -10,16 +10,15 @@ import 'package:xml/xml.dart' as xml;
 /// Parses a minimal subset of a SVG file and extracts all paths segments.
 class SvgParser {
   /// Each [PathSegment] represents a continuous Path element of the parent Path
-  final List<PathSegment> _pathSegments = List<PathSegment>();
-  List<Path> _paths = new List<Path>();
+  final List<PathSegment> _pathSegments = <PathSegment>[];
+  List<Path> _paths = <Path>[];
 
   //TODO do proper parsing and support hex-alpa and RGBA
   Color parseColor(String cStr) {
-    if (cStr == null || cStr.isEmpty)
+    if (cStr.isEmpty)
       throw UnsupportedError("Empty color field found.");
     if (cStr[0] == '#') {
-      return new Color(int.parse(cStr.substring(1), radix: 16)).withOpacity(
-          1.0); // Hex to int: from https://stackoverflow.com/a/51290420/9452450
+      return Color(0xff000000 | int.parse(cStr.substring(1), radix: 16));
     } else if (cStr == 'none') {
       return Colors.transparent;
     } else {
@@ -29,7 +28,7 @@ class SvgParser {
   }
 
   //Extract segments of each path and create [PathSegment] representation
-  void addPathSegments(Path path, int index, double strokeWidth, Color color) {
+  void addPathSegments(Path path, int index, double? strokeWidth, Color? color) {
     int firstPathSegmentIndex = this._pathSegments.length;
     int relativeIndex = 0;
     path.computeMetrics().forEach((pp) {
@@ -52,61 +51,51 @@ class SvgParser {
   void loadFromString(String svgString) {
     this._pathSegments.clear();
     int index = 0; //number of parsed path elements
-    var doc = xml.parse(svgString);
+    _paths = <Path>[];
+    final doc = xml.XmlDocument.parse(svgString);
     // TODO: For now only <path> tags are considered for parsing (add circle, rect, arcs etc.)
-    doc
-        .findAllElements("path")
-        .map((node) => node.attributes)
-        .forEach((attributes) {
-      var dPath = attributes.firstWhere((attr) => attr.name.local == "d",
-          orElse: () => null);
+    for (final node in doc.findAllElements('path')) {
+      final dPath = node.getAttribute('d');
       if (dPath != null) {
         Path path = new Path();
-        writeSvgPathDataToPath(dPath.value, new PathModifier(path));
+        writeSvgPathDataToPath(dPath, new PathModifier(path));
 
-        Color color;
-        double strokeWidth;
+        Color? color;
+        double? strokeWidth;
 
         //Attributes - [1] css-styling
-        var style = attributes.firstWhere((attr) => attr.name.local == "style",
-            orElse: () => null);
+        final style = node.getAttribute('style');
         if (style != null) {
           //Parse color of stroke
           RegExp exp = new RegExp(r"stroke:([^;]+);");
-          Match match = exp.firstMatch(style.value);
+          Match? match = exp.firstMatch(style);
           if (match != null) {
-            String cStr = match.group(1);
-            color = parseColor(cStr);
+            color = parseColor(match.group(1)!);
           }
           //Parse stroke-width
           exp = new RegExp(r"stroke-width:([0-9.]+)");
-          match = exp.firstMatch(style.value);
+          match = exp.firstMatch(style);
           if (match != null) {
-            String cStr = match.group(1);
-            strokeWidth = double.tryParse(cStr) ?? null;
+            strokeWidth = double.tryParse(match.group(1)!);
           }
         }
 
         //Attributes - [2] svg-attributes
-        var strokeElement = attributes.firstWhere(
-            (attr) => attr.name.local == "stroke",
-            orElse: () => null);
+        final strokeElement = node.getAttribute('stroke');
         if (strokeElement != null) {
-          color = parseColor(strokeElement.value);
+          color = parseColor(strokeElement);
         }
 
-        var strokeWidthElement = attributes.firstWhere(
-            (attr) => attr.name.local == "stroke-width",
-            orElse: () => null);
+        final strokeWidthElement = node.getAttribute('stroke-width');
         if (strokeWidthElement != null) {
-          strokeWidth = double.tryParse(strokeWidthElement.value) ?? null;
+          strokeWidth = double.tryParse(strokeWidthElement);
         }
 
         this._paths.add(path);
         addPathSegments(path, index, strokeWidth, color);
         index++;
       }
-    });
+    }
   }
 
   void loadFromPaths(List<Path> paths) {
@@ -115,8 +104,6 @@ class SvgParser {
 
     int index = 0;
     paths.forEach((p) {
-      assert(p != null,
-          "Path element in `paths` must not be null."); //TODO consider allowing this and just continue if the case
       addPathSegments(p, index, null,
           null); //TODO Apply `paints` already here? not so SOLID[0]
       index++;
@@ -144,7 +131,9 @@ class SvgParser {
 /// Represents a segment of path, as returned by path.computeMetrics() and the associated painting parameters for each Path
 class PathSegment {
   PathSegment()
-      : strokeWidth = 0.0,
+      : path = Path(),
+        length = 0.0,
+        strokeWidth = 0.0,
         color = Colors.black,
         firstSegmentOfPathIndex = 0,
         relativeIndex = 0,

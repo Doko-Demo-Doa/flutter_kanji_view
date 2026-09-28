@@ -16,29 +16,30 @@ abstract class AbstractAnimatedDrawingState extends State<KanjiViewer> {
     this.onFinishAnimation = onFinishAnimationDefault;
   }
 
-  AnimationController controller;
-  CurvedAnimation curve;
-  Curve animationCurve;
-  AnimationRange range;
-  String assetPath;
-  PathOrder animationOrder;
-  DebugOptions debug;
+  late AnimationController controller;
+  CurvedAnimation? curve;
+  Curve? animationCurve;
+  AnimationRange? range;
+  String? assetPath;
+  PathOrder? animationOrder;
+  late DebugOptions debug;
   int lastPaintedPathIndex = -1;
 
-  List<PathSegment> pathSegments = List<PathSegment>();
-  List<PathSegment> pathSegmentsToAnimate =
-      List<PathSegment>(); //defined by [range.start] and [range.end]
-  List<PathSegment> pathSegmentsToPaintAsBackground =
-      List<PathSegment>(); //defined by < [range.start]
+  List<PathSegment> pathSegments = <PathSegment>[];
+  List<Path> sourcePaths = <Path>[];
+  List<PathSegment> pathSegmentsToAnimate = <PathSegment>[];
+  List<PathSegment> pathSegmentsToPaintAsBackground = <PathSegment>[];
 
-  VoidCallback onFinishAnimation;
+  late VoidCallback onFinishAnimation;
+  AnimationController? _listenedController;
+  VoidCallback? _controllerListener;
 
   /// Ensure that callback fires off only once even widget is rebuild.
   bool onFinishEvoked = false;
 
   void onFinishAnimationDefault() {
     if (this.widget.onFinish != null) {
-      this.widget.onFinish();
+      this.widget.onFinish?.call();
       if (debug.recordFrames) resetFrame(debug);
     }
   }
@@ -66,9 +67,9 @@ abstract class AbstractAnimatedDrawingState extends State<KanjiViewer> {
   void evokeOnPaintForPath(int i) {
     //Only evoked in next frame
     SchedulerBinding.instance.addPostFrameCallback((_) {
-      setState(() {
-        this.widget.onPaint(i, this.widget.paths[i]);
-      });
+      if (mounted && i < sourcePaths.length) {
+        widget.onPaint?.call(i, sourcePaths[i]);
+      }
     });
   }
 
@@ -97,57 +98,50 @@ abstract class AbstractAnimatedDrawingState extends State<KanjiViewer> {
 
   void applyDebugOptions() {
     //If DebugOptions changes a hot restart is needed.
-    this.debug = this.widget.debug;
-    this.debug ??= DebugOptions();
+    debug = widget.debug ?? DebugOptions();
   }
 
   void applyAnimationCurve() {
-    if (this.controller != null && widget.animationCurve != null) {
+    if (widget.controller != null && widget.animationCurve != null) {
       this.curve = CurvedAnimation(
-          parent: this.controller, curve: this.widget.animationCurve);
+          parent: widget.controller!, curve: widget.animationCurve!);
       this.animationCurve = widget.animationCurve;
     }
   }
 
   //TODO Refactor
   Animation<double> getAnimation() {
-    Animation<double> animation;
-    if (this.widget.run == null || !this.widget.run) {
-      animation = this.controller;
-    } else if (this.curve != null &&
-        this.animationCurve == widget.animationCurve) {
-      animation = this.curve;
-    } else if (widget.animationCurve != null && this.controller != null) {
-      this.curve = CurvedAnimation(
-          parent: this.controller, curve: widget.animationCurve);
-      this.animationCurve = widget.animationCurve;
-      animation = this.curve;
-    } else {
-      animation = this.controller;
+    final requestedCurve = widget.animationCurve;
+    if (requestedCurve == null) {
+      curve?.dispose();
+      curve = null;
+      animationCurve = null;
+      return controller;
     }
-    return animation;
+    if (curve == null || animationCurve != requestedCurve) {
+      curve?.dispose();
+      curve = CurvedAnimation(parent: controller, curve: requestedCurve);
+      animationCurve = requestedCurve;
+    }
+    return curve!;
   }
 
   void applyPathOrder() {
     if (this.pathSegments.isEmpty) return;
 
-    setState(() {
-      if (checkIfDefaultOrderSortingRequired()) {
-        this.pathSegments.sort(Extractor.getComparator(PathOrders.original));
-        this.animationOrder = PathOrders.original;
-        return;
-      }
-
-      if (this.widget.animationOrder != this.animationOrder) {
-        this
-            .pathSegments
-            .sort(Extractor.getComparator(this.widget.animationOrder));
-        this.animationOrder = this.widget.animationOrder;
-      }
-    });
+    if (checkIfDefaultOrderSortingRequired()) {
+      pathSegments.sort(Extractor.getComparator(PathOrders.original));
+      animationOrder = PathOrders.original;
+      return;
+    }
+    if (widget.animationOrder != animationOrder) {
+      pathSegments.sort(Extractor.getComparator(widget.animationOrder ?? PathOrders.original));
+      animationOrder = widget.animationOrder;
+    }
   }
 
-  PathPainter buildUnderlayPainter() {
+  PathPainter? buildUnderlayPainter() {
+    if (widget.underlayStrokes != true) return null;
     if (pathSegmentsToAnimate.isEmpty) return null;
     PathPainterBuilder builder = preparePathPainterBuilder();
     builder.setPathSegments(this.pathSegmentsToAnimate);
@@ -155,7 +149,7 @@ abstract class AbstractAnimatedDrawingState extends State<KanjiViewer> {
     return builder.build();
   }
 
-  PathPainter buildForegroundPainter() {
+  PathPainter? buildForegroundPainter() {
     if (pathSegmentsToAnimate.isEmpty) return null;
     PathPainterBuilder builder =
         preparePathPainterBuilder(this.widget.lineAnimation);
@@ -163,14 +157,15 @@ abstract class AbstractAnimatedDrawingState extends State<KanjiViewer> {
     return builder.build();
   }
 
-  PathPainter buildBackgroundPainter() {
+  PathPainter? buildBackgroundPainter() {
     if (pathSegmentsToPaintAsBackground.isEmpty) return null;
     PathPainterBuilder builder = preparePathPainterBuilder();
     builder.setPathSegments(this.pathSegmentsToPaintAsBackground);
+    builder.setIsUnderlay(true);
     return builder.build();
   }
 
-  PathPainterBuilder preparePathPainterBuilder([LineAnimation lineAnimation]) {
+  PathPainterBuilder preparePathPainterBuilder([LineAnimation? lineAnimation]) {
     PathPainterBuilder builder = PathPainterBuilder(lineAnimation);
     builder.setAnimation(getAnimation());
     builder.setCustomDimensions(getCustomDimensions());
@@ -183,49 +178,45 @@ abstract class AbstractAnimatedDrawingState extends State<KanjiViewer> {
 
   //TODO refactor to be range not null
   void assignPathSegmentsToPainters() {
-    if (this.pathSegments.isEmpty) return;
+    if (this.pathSegments.isEmpty) {
+      pathSegmentsToAnimate = <PathSegment>[];
+      pathSegmentsToPaintAsBackground = <PathSegment>[];
+      return;
+    }
 
-    if (this.widget.range == null) {
+    final selectedRange = widget.range;
+    if (selectedRange == null) {
       this.pathSegmentsToAnimate = this.pathSegments;
       this.range = null;
       this.pathSegmentsToPaintAsBackground.clear();
       return;
     }
 
-    if (this.widget.range != this.range) {
-      checkValidRange();
-
-      this.pathSegmentsToPaintAsBackground = this
-          .pathSegments
-          .where((x) => x.pathIndex < this.widget.range.start)
-          .toList();
-
-      this.pathSegmentsToAnimate = this
-          .pathSegments
-          .where((x) => (x.pathIndex >= this.widget.range.start &&
-              x.pathIndex <= this.widget.range.end))
-          .toList();
-
-      this.range = this.widget.range;
-    }
+    checkValidRange();
+    pathSegmentsToPaintAsBackground = pathSegments
+        .where((x) => x.pathIndex < selectedRange.start)
+        .toList();
+    pathSegmentsToAnimate = pathSegments
+        .where((x) => x.pathIndex >= selectedRange.start &&
+            x.pathIndex <= selectedRange.end)
+        .toList();
+    range = selectedRange;
   }
 
   void checkValidRange() {
-    RangeError.checkValidRange(
-        this.widget.range.start,
-        this.widget.range.end,
-        this.widget.paths.length - 1,
-        "start",
-        "end",
-        "The provided range is invalid for the provided number of paths.");
+    final selectedRange = widget.range!;
+    if (selectedRange.end >= sourcePaths.length) {
+      throw RangeError.range(selectedRange.end, selectedRange.start,
+          sourcePaths.length - 1, 'end');
+    }
   }
 
   // TODO Refactor
-  Size getCustomDimensions() {
+  Size? getCustomDimensions() {
     if (widget.height != null || widget.width != null) {
       return Size(
-        (widget.width != null) ? widget.width : 0,
-        (widget.height != null) ? widget.height : 0,
+        widget.width ?? 0,
+        widget.height ?? 0,
       );
     } else {
       return null;
@@ -249,23 +240,32 @@ abstract class AbstractAnimatedDrawingState extends State<KanjiViewer> {
 
   // TODO Refactor
   void addListenersToAnimationController() {
-    if (this.debug.recordFrames) {
-      this.controller.view.addListener(() {
-        setState(() {
-          if (this.controller.status == AnimationStatus.forward) {
-            iterateFrame(debug);
-          }
-        });
-      });
-    }
+    _removeControllerListener();
+    _listenedController = controller;
+    _controllerListener = () {
+      if (!mounted) return;
+      if (debug.recordFrames && controller.status == AnimationStatus.forward) {
+        iterateFrame(debug);
+      }
+      if (controller.status == AnimationStatus.dismissed) {
+        lastPaintedPathIndex = -1;
+      }
+      setState(() {});
+    };
+    controller.addListener(_controllerListener!);
+  }
 
-    this.controller.view.addListener(() {
-      setState(() {
-        if (this.controller.status == AnimationStatus.dismissed) {
-          this.lastPaintedPathIndex = -1;
-        }
-      });
-    });
+  void _removeControllerListener() {
+    if (_controllerListener != null) {
+      _listenedController?.removeListener(_controllerListener!);
+    }
+  }
+
+  @override
+  void dispose() {
+    _removeControllerListener();
+    curve?.dispose();
+    super.dispose();
   }
 
   void updatePathData() {
@@ -291,18 +291,16 @@ abstract class AbstractAnimatedDrawingState extends State<KanjiViewer> {
     parser.loadFromPaths(this
         .widget
         .paths); //Path object are parsed completely upon every state change
-    setState(() {
-      this.pathSegments = parser.getPathSegments();
-    });
+    sourcePaths = parser.getPaths();
+    pathSegments = parser.getPathSegments();
   }
 
   void parseFromString(SvgParser parser) {
     parser.loadFromString(this
         .widget
         .svgStr); // Path object are parsed completely upon every state change
-    setState(() {
-      this.pathSegments = parser.getPathSegments();
-    });
+    sourcePaths = parser.getPaths();
+    pathSegments = parser.getPathSegments();
   }
 
   bool pathsProvided() => this.widget.paths.isNotEmpty;
@@ -312,14 +310,13 @@ abstract class AbstractAnimatedDrawingState extends State<KanjiViewer> {
   bool svgStrProvided() => this.widget.svgStr.isNotEmpty;
 
   void parseFromSvgAsset(SvgParser parser) {
-    parser.loadFromFile(this.widget.assetPath).then((_) {
+    final requestedPath = widget.assetPath;
+    assetPath = requestedPath;
+    parser.loadFromFile(requestedPath).then((_) {
+      if (!mounted || widget.assetPath != requestedPath) return;
       setState(() {
-        //raw paths
-        this.widget.paths.clear();
-        this.widget.paths.addAll(parser.getPaths());
-        //corresponding segments
-        this.pathSegments = parser.getPathSegments();
-        this.assetPath = this.widget.assetPath;
+        sourcePaths = parser.getPaths();
+        pathSegments = parser.getPathSegments();
       });
     });
   }
@@ -329,7 +326,6 @@ abstract class AbstractAnimatedDrawingState extends State<KanjiViewer> {
     final bool defaultSortingWhenNoOrderDefined =
         this.widget.lineAnimation == LineAnimation.allAtOnce &&
             this.animationOrder != PathOrders.original;
-    return defaultSortingWhenNoOrderDefined ||
-        this.widget.lineAnimation == null;
+    return defaultSortingWhenNoOrderDefined;
   }
 }

@@ -12,7 +12,7 @@ class AnimatedDrawingWithTickerState extends AbstractAnimatedDrawingState
       if (!this.onFinishEvoked) {
         this.onFinishEvoked = true;
         SchedulerBinding.instance.addPostFrameCallback((_) {
-          this.onFinishAnimationDefault();
+          if (mounted) onFinishAnimationDefault();
         });
         //Animation is completed when last frame is painted not when animation controller is finished
         if (this.controller.status == AnimationStatus.dismissed ||
@@ -51,11 +51,13 @@ class AnimatedDrawingWithTickerState extends AbstractAnimatedDrawingState
 
   @override
   Widget build(BuildContext context) {
-    buildAnimation();
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      if (mounted) buildAnimation();
+    });
     return createCustomPaint(context);
   }
 
-  Future<void> buildAnimation() async {
+  void buildAnimation() {
     try {
       if ((this.paused ||
               (this.finished &&

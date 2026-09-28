@@ -5,23 +5,23 @@ import 'painter.dart';
 import 'parser.dart';
 
 class PathPainterBuilder {
-  List<Paint> paints;
-  void Function(int currentPaintedPathIndex) onFinishFrame;
-  bool scaleToViewport;
-  DebugOptions debugOptions;
-  List<PathSegment> pathSegments;
-  bool isUnderlay;
-  LineAnimation lineAnimation;
-  Animation<double> animation;
-  Size customDimensions;
+  late List<Paint> paints;
+  late void Function(int currentPaintedPathIndex) onFinishFrame;
+  late bool scaleToViewport;
+  late DebugOptions debugOptions;
+  late List<PathSegment> pathSegments;
+  bool isUnderlay = false;
+  LineAnimation? lineAnimation;
+  late Animation<double> animation;
+  Size? customDimensions;
 
-  PathPainterBuilder([LineAnimation lineAnimation, bool isUnderlay]) {
+  PathPainterBuilder([LineAnimation? lineAnimation, bool isUnderlay = false]) {
     this.lineAnimation = lineAnimation;
     this.isUnderlay = isUnderlay;
   }
 
-  PathPainter build() {
-    if (isUnderlay != null && isUnderlay == true) {
+  PathPainter? build() {
+    if (isUnderlay) {
       return PaintedPainter(animation, pathSegments, customDimensions, paints,
           onFinishFrame, scaleToViewport, debugOptions);
     }
@@ -45,7 +45,7 @@ class PathPainterBuilder {
     this.isUnderlay = isUnderlay;
   }
 
-  void setCustomDimensions(Size customDimensions) {
+  void setCustomDimensions(Size? customDimensions) {
     this.customDimensions = customDimensions;
   }
 

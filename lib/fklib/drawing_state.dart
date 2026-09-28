@@ -10,7 +10,7 @@ class AnimatedDrawingState extends AbstractAnimatedDrawingState {
       if (!this.onFinishEvoked) {
         this.onFinishEvoked = true;
         SchedulerBinding.instance.addPostFrameCallback((_) {
-          this.onFinishAnimationDefault();
+          if (mounted) onFinishAnimationDefault();
         });
       }
     };
@@ -19,14 +19,19 @@ class AnimatedDrawingState extends AbstractAnimatedDrawingState {
   @override
   void initState() {
     super.initState();
-    this.controller = this.widget.controller;
+    this.controller = this.widget.controller!;
     addListenersToAnimationController();
   }
 
   @override
   void didUpdateWidget(KanjiViewer oldWidget) {
     super.didUpdateWidget(oldWidget);
-    this.controller = this.widget.controller;
+    if (oldWidget.controller != widget.controller) {
+      curve?.dispose();
+      curve = null;
+      controller = widget.controller!;
+      addListenersToAnimationController();
+    }
   }
 
   @override
