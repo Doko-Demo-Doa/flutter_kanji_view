@@ -37,6 +37,9 @@ void main() {
         ),
       ),
     ));
+    // The widget starts its animation in a post-frame callback. Pump once so
+    // the ticker records its start time before advancing the test clock.
+    await tester.pump();
     await tester.pump(const Duration(milliseconds: 150));
     await tester.pump();
 
