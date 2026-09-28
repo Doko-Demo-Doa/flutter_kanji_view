@@ -1,6 +1,4 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'abstract_drawing_state.dart';
 import 'debug.dart';
 import 'drawing_state.dart';
@@ -47,9 +45,9 @@ class KanjiViewer extends StatefulWidget {
     this.underlayStrokes,
     this.scaleToViewport = true,
     this.debug,
-  })  : this.paths = [],
-        this.assetPath = '',
-        this.paints = [] {
+  }) : this.paths = [],
+       this.assetPath = '',
+       this.paints = [] {
     assertAnimationParameters();
     assert(this.svgStr.isNotEmpty);
   }
@@ -90,9 +88,9 @@ class KanjiViewer extends StatefulWidget {
     this.underlayStrokes,
     this.scaleToViewport = true,
     this.debug,
-  })  : this.paths = [],
-        this.svgStr = '',
-        this.paints = [] {
+  }) : this.paths = [],
+       this.svgStr = '',
+       this.paints = [] {
     assertAnimationParameters();
     assert(this.assetPath.isNotEmpty);
   }
@@ -140,8 +138,8 @@ class KanjiViewer extends StatefulWidget {
     this.underlayStrokes,
     this.scaleToViewport = true,
     this.debug,
-  })  : this.assetPath = '',
-        this.svgStr = '' {
+  }) : this.assetPath = '',
+       this.svgStr = '' {
     assertAnimationParameters();
     assert(this.paths.isNotEmpty);
     if (this.paints.isNotEmpty) assert(this.paints.length == this.paths.length);
@@ -241,7 +239,8 @@ class KanjiViewer extends StatefulWidget {
 
   // TODO Refactor SRP
   void assertAnimationParameters() {
-    assert(!(this.controller == null &&
-        (this.run == null || this.duration == null)));
+    assert(
+      !(this.controller == null && (this.run == null || this.duration == null)),
+    );
   }
 }

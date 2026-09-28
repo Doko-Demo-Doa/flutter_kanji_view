@@ -177,7 +177,6 @@ class SVGHelper {
 
       return p;
     } catch (_) {
-      print(_);
       return null;
     }
   }
